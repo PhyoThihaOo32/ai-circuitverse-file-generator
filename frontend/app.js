@@ -20,12 +20,6 @@ const imageName = document.querySelector("#imageName");
 const analyzeBtn = document.querySelector("#analyzeBtn");
 const statusBox = document.querySelector("#status");
 const results = document.querySelector("#results");
-document.querySelectorAll("[data-sample]").forEach((button) => {
-  button.addEventListener("click", () => {
-    question.value = button.dataset.sample;
-  });
-});
-
 document.querySelectorAll(".tabs button").forEach((button) => {
   button.addEventListener("click", () => activateTab(button.dataset.tab));
 });

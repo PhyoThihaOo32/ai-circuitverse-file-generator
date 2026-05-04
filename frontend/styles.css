@@ -163,13 +163,6 @@ button:hover,
   border: 0;
 }
 
-.samples {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
 .upload-row {
   display: flex;
   align-items: center;
