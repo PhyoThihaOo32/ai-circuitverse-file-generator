@@ -10,7 +10,8 @@ if (process.env.DEBUG_STARTUP === "1") console.timeEnd("startup:routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "127.0.0.1";
+// Bind to 0.0.0.0 in production (cloud platforms require it); keep 127.0.0.1 locally via .env
+const HOST = process.env.HOST || (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true }));

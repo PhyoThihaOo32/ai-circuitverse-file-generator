@@ -5,14 +5,10 @@ const state = {
   simulatorFrameLoaded: false,
   simulatorLoadListener: null
 };
-// When served from the Express backend (port 3000) use relative URLs.
-// When opened via file:// or a dev server (e.g. Live Server on 5500), point at the backend directly.
-// Use 127.0.0.1 because the backend intentionally binds there; localhost can
-// resolve to ::1 on some machines and fail even while the server is running.
-const API_BASE =
-  window.location.protocol === "file:" || window.location.port !== "3000"
-    ? "http://127.0.0.1:3000"
-    : "";
+// Use relative URLs when served by any http/https server (works locally on any port
+// and in production on Railway/Render/etc.).
+// Only fall back to the absolute local address when opened directly as a file://.
+const API_BASE = window.location.protocol === "file:" ? "http://127.0.0.1:3000" : "";
 
 const question = document.querySelector("#question");
 const imageInput = document.querySelector("#imageInput");

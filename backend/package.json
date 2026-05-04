@@ -8,6 +8,9 @@
     "dev": "node server.js",
     "inspect:cv": "node scripts/inspectCvFile.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
     "dotenv": "^16.4.5",
