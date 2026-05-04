@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Logic Diagram Generator</title>
+    <link rel="stylesheet" href="styles.css?v=20260504-1" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <h1>AI Logic Diagram Generator</h1>
+        <p>Enter a digital logic question and generate a circuit diagram, truth table, and explanation.</p>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="panel input-panel">
+        <label for="question">Logic question</label>
+        <textarea id="question" spellcheck="false">F = A’B’ + B’C’</textarea>
+        <div class="upload-row">
+          <label class="file-label" for="imageInput">Upload question image</label>
+          <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+          <span id="imageName">No image selected</span>
+        </div>
+        <div class="samples">
+          <button type="button" data-sample="F = A’B’ + B’C’">SOP</button>
+          <button type="button" data-sample="F = A’B’C’ + A’B’C + A’BC + AB’C’">Minterms</button>
+          <button type="button" data-sample="D1 = Q1’Q0 + XQ1&#10;D0 = X’Q0 + Q1Q0’&#10;Z = Q1Q0">State</button>
+          <button type="button" data-sample="Sum = A XOR B XOR Cin&#10;Cout = AB + ACin + BCin">Full adder</button>
+          <button type="button" data-sample="Create a half adder circuit">Half adder (AI)</button>
+          <button type="button" data-sample="Make a 3-input majority gate">Majority gate (AI)</button>
+        </div>
+        <button id="analyzeBtn" type="button" class="primary">Generate Circuit</button>
+      </section>
+
+      <section id="status" class="status" hidden></section>
+
+      <section id="results" class="results" hidden>
+        <nav class="tabs" aria-label="Results tabs">
+          <button class="active" data-tab="summary">Logic Summary</button>
+          <button data-tab="truth">Truth Table</button>
+          <button data-tab="preview">Circuit Preview</button>
+          <button data-tab="steps">Build Steps</button>
+          <button data-tab="downloads">Downloads</button>
+          <button data-tab="simulator">CircuitVerse Simulator</button>
+        </nav>
+
+        <section id="summary" class="tab-panel active"></section>
+        <section id="truth" class="tab-panel"></section>
+        <section id="preview" class="tab-panel"></section>
+        <section id="steps" class="tab-panel"></section>
+        <section id="downloads" class="tab-panel"></section>
+        <section id="simulator" class="tab-panel simulator-panel">
+          <iframe id="cvSimulator" src="about:blank" title="CircuitVerse Simulator" allowfullscreen></iframe>
+        </section>
+      </section>
+    </main>
+
+    <iframe id="downloadFrame" name="downloadFrame" hidden></iframe>
+    <script src="app.js?v=20260504-1"></script>
+  </body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CircuitVerse Simulator</title>
+
+  <!-- Bootstrap icons (FA subset used by toolbar) -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        crossorigin="anonymous" />
+
+  <!-- Simulator CSS bundle -->
+  <link rel="stylesheet" href="simulator.css" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    #simulation { width: 100%; height: 100%; position: relative; }
+    /* hide the loading spinner overlay once JS runs */
+    .loadingIcon { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- Global variables the simulator reads at startup -->
+<script>
+  window.embed             = false;
+  window.__logix_project_id = 0;
+  window.logix_project_id  = 0;
+  window.__projectName     = 'Untitled';
+  window.userSignedIn      = false;
+  window.restrictedElements = [];
+</script>
+
+<!-- ─── Simulator DOM (mirrors edit.html.erb structure) ─────────────────── -->
+<div id="exitView"></div>
+
+<!-- Minimal navbar the JS expects to find -->
+<nav class="navbar navbar-expand-lg navbar-dark header" id="toolbar-nav">
+  <div class="navbar-brand">
+    <span style="color:#fff;font-weight:bold;padding:0 12px;">CircuitVerse</span>
+  </div>
+  <div id="bs-example-navbar-collapse-1">
+    <ul class="navbar-nav navbar-menu noSelect pointerCursor" id="toolbar">
+      <li class="dropdown nav-dropdown d-flex">
+        <a href="#" class="" data-bs-toggle="dropdown" role="button">Project</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item logixButton text-start ps-1" id="newProject">New Project</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="saveOffline">Save Offline</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="createOpenLocalPrompt">Open Offline</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="ExportCircuitFiles">Export as file</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="ImportCircuitFiles">Import file</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="clearProject">Clear Project</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="recoverProject">Recover Project</a></li>
+        </ul>
+      </li>
+      <li class="dropdown nav-dropdown d-flex">
+        <a href="#" class="" data-bs-toggle="dropdown" role="button">Circuit</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item text-start logixButton ps-1" id="createNewCircuitScope">New Circuit +</a></li>
+          <li><a class="dropdown-item logixButton text-start ps-1" id="createSubCircuitPrompt">Insert SubCircuit</a></li>
+        </ul>
+      </li>
+      <li class="dropdown nav-dropdown d-flex">
+        <a href="#" class="" data-bs-toggle="dropdown" role="button">Tools</a>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item text-start ps-1 logixButton" id="createCombinationalAnalysisPrompt">Combinational Analysis</a></li>
+          <li><a class="dropdown-item text-start ps-1 logixButton" id="createSaveAsImgPrompt">Download Image</a></li>
+          <li><a class="dropdown-item text-start ps-1 logixButton" id="colorThemes">Themes</a></li>
+        </ul>
+      </li>
+    </ul>
+    <span class="projectName noSelect defaultCursor fw-bold" id="projectName">Untitled</span>
+  </div>
+</nav>
+
+<!-- Quick-action toolbar the JS binds buttons to -->
+<div class="quick-btn" id="quick-btn-id">
+  <div id="dragQPanel" class="panel-drag"></div>
+  <div><button type="button" id="undoButton" title="Undo"></button></div>
+  <div><button type="button" id="redoButton" title="Redo"></button></div>
+  <div class="zoom-slider d-flex align-items-center">
+    <button id="decrement" aria-label="Zoom Out">-</button>
+    <input type="range" min="0" max="45" step="1" id="customRange1" aria-label="Zoom Level">
+    <button id="increment" aria-label="Zoom In">+</button>
+  </div>
+</div>
+
+<!-- Element panel (left sidebar) -->
+<div id="elementPanel" class="noSelect">
+  <div id="menu"></div>
+  <input id="elementSearch" type="text" placeholder="Search..." />
+</div>
+<!-- guide_1 required by startListeners touch events (hidden stub) -->
+<div id="guide_1" style="display:none;"></div>
+
+<!-- Properties panel (right sidebar) — needs class moduleProperty for touch listeners -->
+<div id="moduleProperty" class="moduleProperty noSelect" style="display:none;">
+  <div id="moduleProperty-inner"></div>
+</div>
+<div id="propertiesPanel" class="noSelect"></div>
+
+<!-- Layout dialog and element panel needed by startListeners -->
+<div id="layoutDialog" class="draggable-panel" style="display:none;"></div>
+<div class="layoutElementPanel" style="display:none;"></div>
+<div id="time-Diagram" class="timing-diagram-panel" style="display:none;"></div>
+
+<!-- Canvas area -->
+<div id="simulation" style="position:absolute;top:0;left:0;right:0;bottom:0;">
+  <div id="tabsBar" class="noSelect pointerCursor"
+       style="position:absolute;left:0;top:0;z-index:4;"></div>
+  <div id="code-window" class="code-window">
+    <textarea id="codeTextArea"></textarea>
+  </div>
+  <div id="verilog-export-code-window-div" style="display:none">
+    <textarea id="verilog-export-code-window"></textarea>
+  </div>
+  <div id="MessageDiv"></div>
+  <div class="canvasArea" id="canvasArea" style="height:100%;width:100%">
+    <canvas id="backgroundArea"
+            style="position:absolute;left:0;top:0;z-index:0;"></canvas>
+    <canvas id="simulationArea"
+            style="position:absolute;left:0;top:0;z-index:1;width:100%;height:100%;"></canvas>
+  </div>
+  <div id="elementName"></div>
+  <!-- Zoom controls -->
+  <div class="zoom-wrapper" id="zoom-in-out-embed">
+    <button type="button" id="zoom-in-embed" style="font-size:22px;">
+      <span class="fa fa-search-plus" title="Zoom In"></span>
+    </button>
+    <button type="button" id="zoom-out-embed" style="font-size:22px;">
+      <span class="fa fa-search-minus" title="Zoom Out"></span>
+    </button>
+  </div>
+  <div style="position:absolute;right:10px;top:25px;z-index:100" class="clockPropertyHeader noSelect">
+    <div id="clockProperty"></div>
+  </div>
+  <!-- Loading spinner (hidden via CSS above, kept for JS compatibility) -->
+  <div class="sk-folding-cube loadingIcon"
+       style="display:none;position:absolute;right:50%;bottom:50%;z-index:100">
+    <div class="sk-cube1 sk-cube"></div>
+    <div class="sk-cube2 sk-cube"></div>
+    <div class="sk-cube4 sk-cube"></div>
+    <div class="sk-cube3 sk-cube"></div>
+  </div>
+</div>
+
+<!-- Timing diagram panel (hidden; contains canvas JS uses for plotting) -->
+<div id="timing_diagram_panel" style="display:none;">
+  <div id="plot">
+    <canvas id="plotArea"></canvas>
+  </div>
+</div>
+<div id="UXnightmode" style="display:none;"></div>
+<div id="smallNavbarMenu-btn" style="display:none;"></div>
+
+<!-- Quick Menu Panel (JS accesses buttons by class index) -->
+<div id="quickmenu-Popover" style="display:none;">
+  <div id="quickMenu">
+    <div id="quickMenu-Inner">
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+      <button class="quicMenu-align"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Simulator JS bundle (includes postMessage listener) -->
+<script src="simulator.js"></script>
+
+</body>
+</html>
