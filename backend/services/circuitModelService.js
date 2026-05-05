@@ -23,7 +23,7 @@ function buildCircuitModel(parsed) {
     }
   };
 
-  const counters = { NOT: 0, AND: 0, OR: 0, XOR: 0, CONST: 0 };
+  const counters = { NOT: 0, AND: 0, OR: 0, XOR: 0, NAND: 0, NOR: 0, XNOR: 0, CONST: 0 };
   // Shared gate cache keyed by canonical AST text; avoids duplicate gates for
   // repeated subexpressions (e.g. A'B' appearing in multiple minterms).
   const gateCache = new Map();
@@ -141,8 +141,8 @@ function isFlipFlopInputOutput(parsed, output) {
 }
 
 // Gate height by type (matches normalizeNode sizes in circuitDiagramService).
-const GATE_HEIGHTS = { NOT: 42, AND: 50, OR: 52, XOR: 52, OUTPUT: 32, D_FLIP_FLOP: 62 };
-const GATE_WIDTHS = { NOT: 58, AND: 76, OR: 82, XOR: 88, OUTPUT: 76, D_FLIP_FLOP: 104 };
+const GATE_HEIGHTS = { NOT: 42, AND: 50, OR: 52, XOR: 52, NAND: 50, NOR: 52, XNOR: 52, OUTPUT: 32, D_FLIP_FLOP: 62 };
+const GATE_WIDTHS = { NOT: 58, AND: 76, OR: 82, XOR: 88, NAND: 86, NOR: 92, XNOR: 98, OUTPUT: 76, D_FLIP_FLOP: 104 };
 
 function deconflictGlobalPositions(gates) {
   const GAP = 14; // minimum vertical gap between adjacent gates in same column
@@ -286,6 +286,34 @@ function buildAstGates(ast, model, context, layout) {
   }
 
   if (ast.type === "NOT") {
+    // Collapse NOT(AND) → NAND, NOT(OR) → NOR, NOT(XOR) → XNOR into single compound gates.
+    // Use the inner gate's layout position so the compound gate sits at the same depth
+    // as the suppressed AND/OR/XOR would have — saving one pipeline stage visually.
+    const inner = ast.value;
+    if (inner.type === "AND" || inner.type === "OR" || inner.type === "XOR") {
+      const compoundType = inner.type === "AND" ? "NAND" : inner.type === "OR" ? "NOR" : "XNOR";
+      const left = buildAstGates(inner.left, model, context, layout);
+      const right = buildAstGates(inner.right, model, context, layout);
+      const id = `${compoundType.toLowerCase()}_${++counters[compoundType]}`;
+      const signal = `${compoundType.toLowerCase()}_${counters[compoundType]}_out`;
+      // Use the inner (AND/OR/XOR) node's position; fall back to the NOT node's position.
+      const point = layout.positions.get(inner) || layout.positions.get(ast);
+      model.gates.push({
+        id,
+        type: compoundType,
+        label: astToText(ast),
+        x: point ? point.x : 150,
+        y: point ? point.y - 25 : 95,
+        inputs: [left.signal, right.signal],
+        output: signal
+      });
+      model.wires.push({ from: left.sourceId, to: id, signal: left.signal });
+      model.wires.push({ from: right.sourceId, to: id, signal: right.signal });
+      const result = { signal, sourceId: id };
+      gateCache.set(cacheKey, result);
+      return result;
+    }
+
     const input = buildAstGates(ast.value, model, context, layout);
     const id = `not_${++counters.NOT}`;
     const signal = `${input.signal}_not_${counters.NOT}`;

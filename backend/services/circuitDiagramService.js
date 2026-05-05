@@ -71,6 +71,9 @@ function normalizeNode(node) {
     AND: [76, 50],
     OR: [82, 52],
     XOR: [88, 52],
+    NAND: [86, 50],  // AND body (76) + bubble gap (5) + bubble radius (5)
+    NOR: [92, 52],   // OR  body (82) + bubble gap (5) + bubble radius (5)
+    XNOR: [98, 52],  // XOR body (88) + bubble gap (5) + bubble radius (5)
     D_FLIP_FLOP: [104, 62]
   };
   const [width, height] = sizes[node.type] || [104, 58];
@@ -130,8 +133,8 @@ function outputAnchor(node) {
 
 function inputAnchor(node, signal, signalSourceY) {
   const inputs = node.inputs || [];
-  // XOR gate body starts 9 px in from node.x due to the extra curve; OR/AND start at node.x
-  const edgeX = node.type === "XOR" ? node.x + 9 : node.x;
+  // XOR/XNOR gate body starts 9 px in from node.x due to the extra back-curve; OR/NOR/AND/NAND start at node.x
+  const edgeX = (node.type === "XOR" || node.type === "XNOR") ? node.x + 9 : node.x;
 
   if (inputs.length <= 1) {
     return { x: edgeX, y: node.y + node.height / 2 };
@@ -164,6 +167,12 @@ function drawNode(node, signalSourceY) {
       return drawOrGate(node, false, signalSourceY);
     case "XOR":
       return drawOrGate(node, true, signalSourceY);
+    case "NAND":
+      return drawNandGate(node, signalSourceY);
+    case "NOR":
+      return drawNorGate(node, signalSourceY);
+    case "XNOR":
+      return drawXnorGate(node, signalSourceY);
     case "D_FLIP_FLOP":
       return drawFlipFlop(node);
     case "CONST":
@@ -225,12 +234,68 @@ function drawOrGate(node, isXor, signalSourceY) {
 </g>`;
 }
 
+// NAND gate = AND body + bubble on output.
+// Body width = 76 (same AND path), bubble center at x+81, right edge at x+86 = node.width.
+function drawNandGate(node, signalSourceY) {
+  const x = node.x;
+  const y = node.y;
+  const bw = 76; // AND body width
+  const h = node.height;
+  const bcx = x + bw + 5; // bubble centre x
+  const bcy = y + h / 2;
+  return `<g>
+  <path d="M ${x} ${y} L ${x + bw * 0.52} ${y} C ${x + bw} ${y}, ${x + bw} ${y + h}, ${x + bw * 0.52} ${y + h} L ${x} ${y + h} Z" fill="#1e0710" stroke="#f0628a" stroke-width="1.5"/>
+  <circle cx="${bcx}" cy="${bcy}" r="5" fill="#0a0a0a" stroke="#f0628a" stroke-width="1.5"/>
+  ${drawInputTicks(node, signalSourceY)}
+  <text x="${x + bw * 0.38}" y="${y + h / 2 + 5}" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#f0628a">NAND</text>
+  <text x="${x + bw / 2}" y="${y + h + 13}" text-anchor="middle" font-family="Arial" font-size="10" fill="#808080">${escapeXml(shortLabel(node.label))}</text>
+</g>`;
+}
+
+// NOR gate = OR body + bubble on output.
+// Body width = 82 (same OR path), bubble center at x+87, right edge at x+92 = node.width.
+function drawNorGate(node, signalSourceY) {
+  const x = node.x;
+  const y = node.y;
+  const bw = 82; // OR body width
+  const h = node.height;
+  const bcx = x + bw + 5; // bubble centre x
+  const bcy = y + h / 2;
+  return `<g>
+  <path d="M ${x} ${y + 2} C ${x + bw * 0.34} ${y + 4}, ${x + bw * 0.75} ${y + 14}, ${x + bw} ${y + h / 2} C ${x + bw * 0.75} ${y + h - 14}, ${x + bw * 0.34} ${y + h - 4}, ${x} ${y + h - 2} C ${x + 20} ${y + h / 2}, ${x + 20} ${y + h / 2}, ${x} ${y + 2} Z" fill="#1e0710" stroke="#f0628a" stroke-width="1.5"/>
+  <circle cx="${bcx}" cy="${bcy}" r="5" fill="#0a0a0a" stroke="#f0628a" stroke-width="1.5"/>
+  ${drawInputTicks(node, signalSourceY)}
+  <text x="${x + bw * 0.42}" y="${y + h / 2 + 5}" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#f0628a">NOR</text>
+  <text x="${x + bw / 2}" y="${y + h + 13}" text-anchor="middle" font-family="Arial" font-size="10" fill="#808080">${escapeXml(shortLabel(node.label))}</text>
+</g>`;
+}
+
+// XNOR gate = XOR body (with extra back-curve) + bubble on output.
+// Body width = 88 (same XOR path), bubble center at x+93, right edge at x+98 = node.width.
+function drawXnorGate(node, signalSourceY) {
+  const x = node.x;
+  const y = node.y;
+  const bw = 88; // XOR body width
+  const h = node.height;
+  const offset = 9; // XOR back-curve offset
+  const bcx = x + bw + 5;
+  const bcy = y + h / 2;
+  return `<g>
+  <path d="M ${x} ${y + 3} C ${x + 18} ${y + h / 2}, ${x + 18} ${y + h / 2}, ${x} ${y + h - 3}" fill="none" stroke="#f0628a" stroke-width="1.5"/>
+  <path d="M ${x + offset} ${y + 2} C ${x + bw * 0.34} ${y + 4}, ${x + bw * 0.75} ${y + 14}, ${x + bw} ${y + h / 2} C ${x + bw * 0.75} ${y + h - 14}, ${x + bw * 0.34} ${y + h - 4}, ${x + offset} ${y + h - 2} C ${x + 20 + offset} ${y + h / 2}, ${x + 20 + offset} ${y + h / 2}, ${x + offset} ${y + 2} Z" fill="#1e0710" stroke="#f0628a" stroke-width="1.5"/>
+  <circle cx="${bcx}" cy="${bcy}" r="5" fill="#0a0a0a" stroke="#f0628a" stroke-width="1.5"/>
+  ${drawInputTicks(node, signalSourceY)}
+  <text x="${x + bw * 0.46}" y="${y + h / 2 + 5}" text-anchor="middle" font-family="Arial" font-size="10" font-weight="700" fill="#f0628a">XNOR</text>
+  <text x="${x + bw / 2}" y="${y + h + 13}" text-anchor="middle" font-family="Arial" font-size="10" fill="#808080">${escapeXml(shortLabel(node.label))}</text>
+</g>`;
+}
+
 function drawInputTicks(node, signalSourceY) {
   const inputs = node.inputs || [];
   if (!inputs.length) return "";
   const margin = 6;
-  // XOR gate body starts 9px in; AND/OR bodies start at node.x
-  const edgeX = node.type === "XOR" ? node.x + 9 : node.x;
+  // XOR/XNOR gate body starts 9px in; AND/NAND/OR/NOR bodies start at node.x
+  const edgeX = (node.type === "XOR" || node.type === "XNOR") ? node.x + 9 : node.x;
   return inputs
     .map((input) => {
       let tickY;

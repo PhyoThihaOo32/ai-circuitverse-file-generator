@@ -64,6 +64,7 @@ function buildCircuitVerseScope(circuitModel, scopeId) {
     const objectType = mapGateToCircuitVerseElement(gate).type;
     const isOutput = objectType === "Output";
     const isNot = objectType === "NotGate";
+    const isBinaryGate = ["AndGate", "OrGate", "XorGate", "NandGate", "NorGate", "XnorGate"].includes(objectType);
     const numInputs = isOutput ? 1 : (isNot ? 1 : Math.max(2, (gate.inputs || []).length));
     const numOutputs = isOutput ? 0 : 1;
 
@@ -377,6 +378,9 @@ function mapGateToCircuitVerseElement(gate) {
     AND: "AndGate",
     OR: "OrGate",
     XOR: "XorGate",
+    NAND: "NandGate",
+    NOR: "NorGate",
+    XNOR: "XnorGate",
     OUTPUT: "Output",
     D_FLIP_FLOP: "DflipFlop"
   };

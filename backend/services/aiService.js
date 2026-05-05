@@ -59,9 +59,11 @@ Common circuits to recognise:
 - 2-to-4 decoder with inputs A,B and outputs D0-D3: D0=NOT A AND NOT B, D1=NOT A AND B, D2=A AND NOT B, D3=A AND B
 - AND gate (N inputs): F=A AND B [AND C...]
 - OR gate (N inputs): F=A OR B [OR C...]
+- NAND gate: F=NOT(A AND B)
+- NOR gate: F=NOT(A OR B)
+- XNOR gate: F=NOT(A XOR B)
 - Majority gate (3-input): F=(A AND B) OR (B AND C) OR (A AND C)
 - 2:1 Multiplexer: F=(S AND B) OR (NOT S AND A)
-- XNOR: F=NOT(A XOR B)
 - D latch: treat as combinational with Q=D output
 - 2-bit synchronous up counter with D flip-flops: D0=NOT Q0, D1=Q1 XOR Q0
 - 2-bit synchronous down counter with D flip-flops: D0=NOT Q0, D1=Q1 XOR NOT Q0
@@ -136,6 +138,26 @@ const NAMED_CIRCUITS = [
       expressions: { F: "(NOT S AND A) OR (S AND B)" },
       flipFlops: [], stateVariables: [],
       explanation: "2-to-1 multiplexer: S selects between inputs A and B."
+    }
+  },
+  {
+    pattern: /\bnand\b/i,
+    result: {
+      type: "combinational", subtype: "nand",
+      inputs: ["A", "B"], outputs: ["F"],
+      expressions: { F: "NOT (A AND B)" },
+      flipFlops: [], stateVariables: [],
+      explanation: "NAND gate: output is 0 only when all inputs are 1; otherwise 1."
+    }
+  },
+  {
+    pattern: /\bnor\b/i,
+    result: {
+      type: "combinational", subtype: "nor",
+      inputs: ["A", "B"], outputs: ["F"],
+      expressions: { F: "NOT (A OR B)" },
+      flipFlops: [], stateVariables: [],
+      explanation: "NOR gate: output is 1 only when all inputs are 0; otherwise 0."
     }
   },
   {
