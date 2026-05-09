@@ -146,6 +146,16 @@ function outputAnchor(node) {
     // Right edge of bubble = x + (node.width - 10) - 2 + 5 = x + node.width - 7
     return { x: node.x + node.width - 7, y: node.y + node.height / 2 };
   }
+  if (node.type === "AND") {
+    // The AND body's right side is a cubic Bézier from (x+0.52w, y) with both
+    // control points at (x+w, y/y+h) and back to (x+0.52w, y+h). The actual
+    // rightmost x of the curve is at t=0.5: x(0.5) = 0.25·(x+0.52w) + 0.75·(x+w)
+    // = x + 0.88w. Anchoring the output wire at x+w would leave a 9-px gap
+    // between the visible gate tip and where the wire starts.
+    return { x: node.x + node.width * 0.88, y: node.y + node.height / 2 };
+  }
+  // OR/XOR (and bubble-suffixed NOR/XNOR/NAND): the body bezier endpoint is
+  // exactly at x+w (or the bubble's right edge equals x+w), so x+w is correct.
   return { x: node.x + node.width, y: node.y + node.height / 2 };
 }
 
