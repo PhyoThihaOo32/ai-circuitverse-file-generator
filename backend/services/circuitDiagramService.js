@@ -142,20 +142,23 @@ function wirePath(start, end) {
 
 function outputAnchor(node) {
   if (node.type === "NOT") {
-    // NOT gate: w = node.width - 10; bubble centre = x + w - 2; radius = 5
-    // Right edge of bubble = x + (node.width - 10) - 2 + 5 = x + node.width - 7
-    return { x: node.x + node.width - 7, y: node.y + node.height / 2 };
+    // Triangle tip at x + node.width - 20; bubble now placed adjacent (centre
+    // = tip + 5, radius = 5) so its right edge is at x + node.width - 10.
+    return { x: node.x + node.width - 10, y: node.y + node.height / 2 };
   }
   if (node.type === "AND") {
-    // The AND body's right side is a cubic Bézier from (x+0.52w, y) with both
-    // control points at (x+w, y/y+h) and back to (x+0.52w, y+h). The actual
-    // rightmost x of the curve is at t=0.5: x(0.5) = 0.25·(x+0.52w) + 0.75·(x+w)
-    // = x + 0.88w. Anchoring the output wire at x+w would leave a 9-px gap
-    // between the visible gate tip and where the wire starts.
+    // AND body's right side is a cubic Bézier from (x+0.52w, y) with control
+    // points at (x+w, y/y+h) back to (x+0.52w, y+h). The curve's rightmost x
+    // is at t=0.5: x(0.5) = 0.25·(x+0.52w) + 0.75·(x+w) = x + 0.88w.
     return { x: node.x + node.width * 0.88, y: node.y + node.height / 2 };
   }
-  // OR/XOR (and bubble-suffixed NOR/XNOR/NAND): the body bezier endpoint is
-  // exactly at x+w (or the bubble's right edge equals x+w), so x+w is correct.
+  if (node.type === "NAND") {
+    // NAND = AND body (peaks at x + 0.88·76 = x + 67) + bubble now placed
+    // adjacent at centre = peak + 5, radius = 5 → right edge at x + 77.
+    return { x: node.x + 76 * 0.88 + 10, y: node.y + node.height / 2 };
+  }
+  // OR / XOR / NOR / XNOR: body bezier endpoint is exactly at x+w, and for
+  // NOR/XNOR the bubble's right edge equals x+w, so x+w is correct.
   return { x: node.x + node.width, y: node.y + node.height / 2 };
 }
 
@@ -255,6 +258,10 @@ function drawConstPin(node) {
 
 // ── Junction dots ─────────────────────────────────────────────────────────────
 // Draws a filled dot wherever a signal fans out to 2+ targets.
+// IMPORTANT: place the dot 10 px PAST the source's output anchor, on the wire
+// itself. Putting it AT the output anchor would overlap the gate body — for
+// AND it sits on the bezier peak (looks like a NAND bubble), for any gate it
+// looks like the dot is part of the gate, not the wiring.
 function buildJunctionDots(wires, nodeMap) {
   const count = new Map();
   wires.forEach((w) => count.set(w.from, (count.get(w.from) || 0) + 1));
@@ -265,10 +272,11 @@ function buildJunctionDots(wires, nodeMap) {
     const src = nodeMap.get(w.from);
     if (!src) return;
     const a = outputAnchor(src);
-    const key = `${a.x},${a.y}`;
+    const dotX = a.x + 10; // shift onto the wire's first horizontal segment
+    const key = `${dotX},${a.y}`;
     if (seen.has(key)) return;
     seen.add(key);
-    dots.push(`<circle cx="${a.x}" cy="${a.y}" r="3.5" fill="#f0628a"/>`);
+    dots.push(`<circle cx="${dotX}" cy="${a.y}" r="3.5" fill="#f0628a"/>`);
   });
   return dots.join("\n");
 }
@@ -277,11 +285,14 @@ function drawNotGate(node) {
   const x = node.x;
   const y = node.y;
   const h = node.height;
-  const w = node.width - 10;
+  // Triangle from (x, y+6) → (x, y+h-6) → (x + node.width - 20, y+h/2).
+  // Bubble adjacent: centre = tip + 5, radius = 5 → right edge = tip + 10.
+  const triangleTipX = x + node.width - 20;
+  const bcx = triangleTipX + 5;
   return `<g>
-  <path d="M ${x} ${y + 6} L ${x} ${y + h - 6} L ${x + w - 10} ${y + h / 2} Z" fill="#1e0710" stroke="#f0628a" stroke-width="1.5"/>
-  <circle cx="${x + w - 2}" cy="${y + h / 2}" r="5" fill="#0a0a0a" stroke="#f0628a" stroke-width="1.5"/>
-  <text x="${x + w / 2 - 5}" y="${y + h + 13}" text-anchor="middle" font-family="Arial" font-size="10" fill="#f0628a">${escapeXml(node.label)}</text>
+  <path d="M ${x} ${y + 6} L ${x} ${y + h - 6} L ${triangleTipX} ${y + h / 2} Z" fill="#1e0710" stroke="#f0628a" stroke-width="1.5"/>
+  <circle cx="${bcx}" cy="${y + h / 2}" r="5" fill="#0a0a0a" stroke="#f0628a" stroke-width="1.5"/>
+  <text x="${(x + triangleTipX) / 2}" y="${y + h + 13}" text-anchor="middle" font-family="Arial" font-size="10" fill="#f0628a">${escapeXml(node.label)}</text>
 </g>`;
 }
 
@@ -314,14 +325,15 @@ function drawOrGate(node, isXor, signalSourceY) {
 </g>`;
 }
 
-// NAND gate = AND body + bubble on output.
-// Body width = 76 (same AND path), bubble center at x+81, right edge at x+86 = node.width.
+// NAND = AND body (bezier peaks at x + 0.88·76 = x + 67) + bubble adjacent
+// to the body peak (centre = peak + 5, radius 5 → right edge at x + 77).
 function drawNandGate(node, signalSourceY) {
   const x = node.x;
   const y = node.y;
-  const bw = 76; // AND body width
+  const bw = 76; // AND body width — bezier peak at x + 0.88·bw
   const h = node.height;
-  const bcx = x + bw + 5; // bubble centre x
+  const bodyTip = x + bw * 0.88;
+  const bcx = bodyTip + 5;
   const bcy = y + h / 2;
   return `<g>
   <path d="M ${x} ${y} L ${x + bw * 0.52} ${y} C ${x + bw} ${y}, ${x + bw} ${y + h}, ${x + bw * 0.52} ${y + h} L ${x} ${y + h} Z" fill="#1e0710" stroke="#f0628a" stroke-width="1.5"/>
