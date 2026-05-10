@@ -557,29 +557,54 @@ input[type="file"] {
 .sim-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
+  gap: 4px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--line);
-  background: rgba(4,4,8,0.94);
+  background: rgba(4,4,8,0.96);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .sim-controls button {
-  min-height: 30px;
-  padding: 4px 12px;
-  font-size: 0.76rem;
-  letter-spacing: 0.05em;
+  min-height: 28px;
+  padding: 3px 10px;
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
   border-radius: 6px;
+  white-space: nowrap;
+}
+/* Active state — e.g. Panel button when panel is open */
+.sim-controls button.sim-btn-active {
+  background: rgba(240,98,138,0.18);
+  border-color: rgba(240,98,138,0.6);
+  color: #f0628a;
+}
+/* Danger button — Clear */
+.sim-controls button.sim-btn-danger {
+  color: #ff6b8a;
+  border-color: rgba(255,107,138,0.4);
+}
+.sim-controls button.sim-btn-danger:hover {
+  background: rgba(255,107,138,0.15);
+  border-color: #ff6b8a;
+}
+/* Vertical separator between button groups */
+.sim-controls .sim-sep {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.12);
+  flex-shrink: 0;
+  margin: 0 2px;
 }
 .sim-controls .sim-hint-label {
   margin-left: auto;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--muted-2);
   letter-spacing: 0.03em;
   pointer-events: none;
 }
 .simulator-panel iframe {
   flex: 1; width: 100%; min-height: 0;
-  border: 0; display: block; background: #fff;
+  border: 0; display: block; background: #0a0a12;
 }
 
 /* ── Cards ─────────────────────────────────────────────────────────────────── */
