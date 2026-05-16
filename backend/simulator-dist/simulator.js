@@ -46525,7 +46525,7 @@ endmodule
     });
     function createIcon(element) {
       return `<div class="${element.name} icon logixModules filterElements" id="${element.name}" title="${element.label}">
-            <img  src= "/img/${element.name}.svg" alt="element's image" >
+            <img  src= "/simulator/img/${element.name}.svg" alt="element's image" >
         </div>`;
     }
     zoomSliderListeners();
@@ -48394,7 +48394,7 @@ User Id: ${window.user_id}`;
       for (let i = 0; i < globalScope[el].length; i++) {
         if (!globalScope[el][i].subcircuitMetadata.showInSubcircuit) {
           tempHTML += `<div class="icon subcircuitModule" id="${el}-${i}" data-element-id="${i}" data-element-name="${el}">`;
-          tempHTML += `<img src= "/img/${el}.svg">`;
+          tempHTML += `<img src= "/simulator/img/${el}.svg">`;
           tempHTML += `<p class="img__description">${globalScope[el][i].label !== "" ? globalScope[el][i].label : "unlabeled"}</p>`;
           tempHTML += "</div>";
           available = true;
@@ -50974,7 +50974,7 @@ User Id: ${window.user_id}`;
     window.renderOrder = [...moduleList.slice().reverse(), "wires", "allNodes"];
     function createIcon(element) {
       return `<div class="icon logixModules" id="${element.name}" title="${element.label}">
-            <img src= "/img/${element.name}.svg" alt="element's image" >
+            <img src= "/simulator/img/${element.name}.svg" alt="element's image" >
         </div>`;
     }
     window.elementHierarchy = elementHierarchy2;
