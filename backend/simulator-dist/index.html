@@ -84,23 +84,54 @@
       flex-shrink: 0;
     }
 
+    /* Search row container */
+    #elementSearchRow {
+      position: relative !important;
+      flex-shrink: 0 !important;
+      padding: 6px 8px !important;
+    }
+
     /* Search box */
-    #elementSearch {
+    #elementSearch,
+    #elementPanel .search-input {
       display: block !important;
-      width: calc(100% - 16px) !important;
-      margin: 8px !important;
-      padding: 5px 9px !important;
+      width: 100% !important;
+      padding: 5px 28px 5px 9px !important;
       background: #1a1a30 !important;
       color: #d8d8f0 !important;
       border: 1px solid rgba(240,98,138,0.28) !important;
       border-radius: 5px !important;
       font-size: 11.5px !important;
       outline: none !important;
-      flex-shrink: 0 !important;
+      box-sizing: border-box !important;
     }
-    #elementSearch:focus {
+    #elementSearch:focus,
+    #elementPanel .search-input:focus {
       border-color: #f0628a !important;
       box-shadow: 0 0 0 2px rgba(240,98,138,0.15) !important;
+    }
+
+    /* Search clear button */
+    #elementPanel .search-close {
+      position: absolute !important;
+      right: 14px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      background: none !important;
+      border: none !important;
+      color: #9090c0 !important;
+      cursor: pointer !important;
+      font-size: 13px !important;
+      padding: 0 2px !important;
+      min-height: unset !important;
+    }
+    #elementPanel .search-close:hover { color: #f0628a !important; }
+
+    /* Search results list */
+    #elementPanel .search-results {
+      background: #0d0d1a !important;
+      overflow-y: auto !important;
+      max-height: calc(100vh - 80px) !important;
     }
 
     /* Gate list container */
@@ -113,21 +144,86 @@
     #menu::-webkit-scrollbar-track { background: transparent; }
     #menu::-webkit-scrollbar-thumb { background: rgba(240,98,138,0.35); border-radius: 2px; }
 
-    /* Group headings (e.g. "Logic Gates", "Input/Output") */
+    /* ── Accordion category headers ─────────────────────────────────────────── */
+    #elementPanel .panelHeader,
+    #elementPanel .ui-accordion-header,
     #elementPanel .elementHeading,
     #elementPanel .panelHeading,
     #elementPanel h3,
     #elementPanel .circuit-group-title {
       background: #16162e !important;
       color: #f0628a !important;
-      border-color: rgba(240,98,138,0.18) !important;
+      border: none !important;
+      border-bottom: 1px solid rgba(240,98,138,0.18) !important;
       font-size: 10px !important;
       letter-spacing: 0.06em !important;
       text-transform: uppercase !important;
-      padding: 5px 10px !important;
+      padding: 6px 10px !important;
+      cursor: pointer !important;
+      outline: none !important;
+      user-select: none !important;
+    }
+    #elementPanel .panelHeader:hover,
+    #elementPanel .ui-accordion-header:hover {
+      background: #1c1c38 !important;
+      color: #ff8cad !important;
+    }
+    /* jQuery UI accordion icon — hide default arrows */
+    #elementPanel .ui-accordion-header .ui-accordion-header-icon { display: none !important; }
+
+    /* Accordion content panel */
+    #elementPanel .panel,
+    #elementPanel .ui-accordion-content {
+      background: transparent !important;
+      border: none !important;
+      padding: 4px !important;
+      display: flex !important;
+      flex-wrap: wrap !important;
+      gap: 4px !important;
     }
 
-    /* Individual gate / module items */
+    /* Individual gate icons */
+    #elementPanel .icon.logixModules,
+    #elementPanel .filterElements {
+      display: inline-flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 54px !important;
+      padding: 5px 3px !important;
+      border-radius: 6px !important;
+      cursor: grab !important;
+      border: 1px solid transparent !important;
+      transition: background 0.12s, border-color 0.12s !important;
+      user-select: none !important;
+    }
+    #elementPanel .icon.logixModules:hover,
+    #elementPanel .filterElements:hover {
+      background: rgba(240,98,138,0.12) !important;
+      border-color: rgba(240,98,138,0.3) !important;
+    }
+    #elementPanel .icon.logixModules[title]::after {
+      content: attr(title);
+      font-size: 8px;
+      color: #9090c0;
+      text-align: center;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      max-width: 50px;
+      display: block;
+    }
+    #elementPanel .icon img {
+      width: 36px !important;
+      height: 36px !important;
+      object-fit: contain !important;
+      display: block !important;
+      filter: invert(0.85) hue-rotate(260deg) saturate(0.7) !important;
+      opacity: 0.85 !important;
+      pointer-events: none !important;
+    }
+
+    /* Individual gate / module items (legacy classes) */
     #elementPanel .module,
     #elementPanel .sub-module,
     #elementPanel .panelItem,
@@ -411,8 +507,15 @@
 
 <!-- ── Element panel (left sidebar — VISIBLE) ─────────────────────────────── -->
 <div id="elementPanel" class="noSelect">
-  <div id="menu"></div>
-  <input id="elementSearch" type="text" placeholder="&#x1F50D; Search gates..." autocomplete="off" />
+  <!-- Search row — parent.parent() must be #elementPanel for simulator's search handler -->
+  <div id="elementSearchRow">
+    <input id="elementSearch" class="search-input" type="text"
+           placeholder="&#x1F50D; Search gates..." autocomplete="off" />
+    <button class="search-close" style="display:none;" aria-label="Clear search">&#x2715;</button>
+    <div class="search-results" style="display:none;"></div>
+  </div>
+  <!-- Accordion populated by setupElementLists() -->
+  <div id="menu" class="accordion"></div>
 </div>
 
 <!-- guide_1 (hidden stub for touch events) -->
@@ -475,6 +578,79 @@
 </div>
 <div id="UXnightmode" style="display:none;"></div>
 <div id="smallNavbarMenu-btn" style="display:none;"></div>
+
+<!-- ── Required DOM stubs (hidden — keep for JS compat) ──────────────────── -->
+
+<!-- Context menu (right-click canvas) -->
+<div id="contextMenu" style="visibility:hidden;position:absolute;z-index:9999;background:#1a1a2e;border:1px solid rgba(240,98,138,0.4);border-radius:6px;padding:4px 0;min-width:140px;font-family:Arial,sans-serif;font-size:12px;color:#d0d0f0;">
+  <div onclick="menuItemClicked(0)" style="padding:6px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(240,98,138,0.15)'" onmouseout="this.style.background=''">Copy</div>
+  <div onclick="menuItemClicked(1)" style="padding:6px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(240,98,138,0.15)'" onmouseout="this.style.background=''">Cut</div>
+  <div onclick="menuItemClicked(2)" style="padding:6px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(240,98,138,0.15)'" onmouseout="this.style.background=''">Paste</div>
+  <div onclick="menuItemClicked(3)" style="padding:6px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(240,98,138,0.15)'" onmouseout="this.style.background=''">Delete</div>
+  <div onclick="menuItemClicked(4)" style="padding:6px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(240,98,138,0.15)'" onmouseout="this.style.background=''">Undo</div>
+  <div onclick="menuItemClicked(7)" style="padding:6px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(240,98,138,0.15)'" onmouseout="this.style.background=''">Fit to Screen</div>
+</div>
+
+<!-- Tooltip help popup (shown on gate hover in panel) -->
+<div id="Help" style="display:none;position:absolute;z-index:500;background:rgba(13,13,26,0.96);border:1px solid rgba(240,98,138,0.3);border-radius:6px;padding:8px 12px;color:#d0d0f0;font-size:11px;font-family:Arial,sans-serif;max-width:220px;pointer-events:none;"></div>
+
+<!-- Mini-map (bottom-right canvas overview) -->
+<div id="miniMap" style="display:none;position:absolute;bottom:8px;right:8px;z-index:50;border:1px solid rgba(240,98,138,0.25);background:rgba(10,10,18,0.85);">
+  <canvas id="miniMapArea"></canvas>
+</div>
+
+<!-- Sidebar (for resizable panel — our elementPanel plays this role) -->
+<div id="sideBar" style="display:none;"></div>
+
+<!-- Combinational analysis dialog stub -->
+<div id="combinationalAnalysis" style="display:none;"></div>
+
+<!-- Verilog editor panel stub -->
+<div id="verilogEditorPanel" class="draggable-panel" style="display:none!important;">
+  <div class="panel-header"><span>Verilog Editor</span></div>
+  <div class="panel-body"></div>
+</div>
+
+<!-- Testbench manual panel stub -->
+<div class="testbench-manual-panel draggable-panel" style="display:none!important;">
+  <div class="panel-header">
+    <span>Testbench</span>
+    <button class="minimize">−</button>
+    <button class="maximize" style="display:none;">+</button>
+  </div>
+  <div class="panel-body"></div>
+</div>
+
+<!-- Subcircuit accordion menu for touch/layout panel -->
+<div id="menu2" style="display:none;"></div>
+<div id="subcircuitMenu" style="display:none;"></div>
+
+<!-- Touch panels (hidden on desktop) -->
+<div id="TouchCe-panel" style="display:none;visibility:hidden;"></div>
+<div id="touchElement-property" style="display:none;visibility:hidden;"></div>
+<div id="touchtD-popover" style="display:none;visibility:hidden;"></div>
+
+<!-- Mobile navbar project name stub -->
+<div id="ProjectID" style="display:none;"></div>
+
+<!-- Verilog theme selector stub -->
+<select id="selectVerilogTheme" style="display:none;"></select>
+
+<!-- Download theme anchor stub -->
+<a id="downloadThemeFile" style="display:none;" href="#"></a>
+
+<!-- Keyboard shortcut dialog — keyBinder() appends editPanel+heading+markUp here -->
+<div id="customShortcutDialog" style="display:none!important;"></div>
+<!-- Trigger button for keyboard shortcuts dialog (hidden) -->
+<button id="customShortcut" style="display:none!important;" type="button">Keyboard Shortcuts</button>
+
+<!-- Stub inputs so getElementById("projname") / getElementById("circname") never return null -->
+<input id="projname" type="text" style="display:none!important;" aria-hidden="true" />
+<input id="circname" type="text" style="display:none!important;" aria-hidden="true" />
+
+<!-- Smallscreen navbar stubs (mobile touch feature — hidden on desktop) -->
+<div class="smallscreen-navbar" style="display:none!important;height:0;"></div>
+<div class="smallscreen-navbar-inner" style="display:none!important;"></div>
 
 <!-- Quick Menu Panel stubs -->
 <div id="quickmenu-Popover" style="display:none;">

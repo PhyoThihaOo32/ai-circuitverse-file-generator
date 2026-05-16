@@ -151,6 +151,7 @@ function loadSimulator(data) {
 
   const sendWithRetries = () => {
     state.simulatorLoadListener = null;
+    state.simulatorFrameLoaded = true;
     [0, 700, 1500].forEach((delay) => {
       const timer = window.setTimeout(send, delay);
       state.simulatorRetryTimers.push(timer);
