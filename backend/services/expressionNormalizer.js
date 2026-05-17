@@ -41,6 +41,9 @@ function extractIdentifiers(text) {
 function splitCompoundIdentifier(identifier) {
   if (!identifier || RESERVED.has(identifier.toUpperCase())) return [identifier];
   if (/^[a-z]/.test(identifier) || identifier.includes("_")) return [identifier];
+  // All-uppercase acronyms (CIN, COUT, CLK, SEL, Q0, D1, …) are single identifiers.
+  // Without this guard they would be split character-by-character (CIN → C, I, N).
+  if (/^[A-Z][A-Z0-9]*$/.test(identifier)) return [identifier];
 
   const parts = [];
   let i = 0;

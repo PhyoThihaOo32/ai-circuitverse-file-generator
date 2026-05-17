@@ -119,7 +119,7 @@ async function readJsonResponse(response) {
 
 function renderResults(data) {
   renderSummary(data);
-  renderTruthTable(data.truthTable, data.verification);
+  renderTruthTable(data.truthTable, data.verification, data.parsed?.outputs);
   document.querySelector("#steps").innerHTML = `<ol>${data.instructions.map((step) => `<li>${escapeHtml(step.replace(/^Step \d+:\s*/, ""))}</li>`).join("")}</ol>`;
   renderDownloads(data);
   renderSimulatorPanel(data);
@@ -310,25 +310,28 @@ function buildMiniVerifyChip(verification) {
   return `<div class="verify-chip failed">⚠ Verification found issues &mdash; check the Truth Table tab for details.</div>`;
 }
 
-function renderTruthTable(rows, verification) {
+function renderTruthTable(rows, verification, outputNames) {
   const badge = buildVerifyBadge(verification);
   if (!rows.length) {
     document.querySelector("#truth").innerHTML = `${badge}<p>No rows generated.</p>`;
     return;
   }
   const headers = Object.keys(rows[0]);
-  const inputCols = headers.length > 1 ? headers.slice(0, -1) : [];
-  const outputCols = headers.length > 1 ? headers.slice(-1) : headers;
+  // Build a Set of output column names. Falls back to only the last column
+  // when no parsed output list is passed (keeps backward-compatibility).
+  const outputSet = outputNames && outputNames.length
+    ? new Set(outputNames)
+    : new Set(headers.length > 1 ? [headers[headers.length - 1]] : headers);
   document.querySelector("#truth").innerHTML = `
     ${badge}
     <div class="table-wrap">
       <table>
-        <thead><tr>${headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+        <thead><tr>${headers.map((h) => `<th${outputSet.has(h) ? ' class="col-output"' : ""}>${escapeHtml(h)}</th>`).join("")}</tr></thead>
         <tbody>
-          ${rows.map((row) => `<tr>${headers.map((h, i) => {
+          ${rows.map((row) => `<tr>${headers.map((h) => {
             const val = String(row[h] ?? "");
-            const isOut = i === headers.length - 1 && headers.length > 1;
-            return `<td${isOut ? ` data-output="${escapeHtml(val)}"` : ""}>${escapeHtml(val)}</td>`;
+            const isOut = outputSet.has(h);
+            return `<td${isOut ? ` class="col-output" data-output="${escapeHtml(val)}"` : ""}>${escapeHtml(val)}</td>`;
           }).join("")}</tr>`).join("")}
         </tbody>
       </table>
@@ -411,17 +414,11 @@ function buildDownloadLinks(data) {
     artifactDefinition("txt", "Download TXT", "logic-build-steps.txt", "text/plain", data.instructions.join("\n"), serverArtifacts.txt),
     artifactDefinition("json", "Download JSON", "internal-circuit-model.json", "application/json", JSON.stringify(data.circuitModel, null, 2), serverArtifacts.json)
   ].filter(Boolean);
-  return items.map((item) => {
-    if (item.server?.downloadUrl) {
-      return {
-        ...item,
-        url: `${API_BASE}${item.server.downloadUrl}`,
-        filename: item.server.filename || item.filename,
-        content: item.server.content || item.content
-      };
-    }
-    return makeDownload(item);
-  });
+  // Always generate client-side blob URLs from the inline response content.
+  // Server-side bundle download IDs (/api/download/:id/:type) use an in-memory Map
+  // that is not shared across serverless instances (Vercel/Railway), so those URLs
+  // frequently 404. Blob URLs are instant, work offline, and never expire.
+  return items.map((item) => makeDownload(item));
 }
 
 function artifactDefinition(type, label, filename, mimeType, content, server) {

@@ -895,6 +895,19 @@
     });
   });
 
+  /* ─── Hide internal toolbar when embedded in the parent app ─────────────
+     The parent app (app.js) provides its own .sim-controls toolbar and
+     communicates via postMessage. Showing both toolbars is redundant; hide
+     the internal #sim-toolbar and #sim-hint only when inside an iframe.   */
+  (function() {
+    if (window.self !== window.top) {
+      var tb = document.getElementById('sim-toolbar');
+      var hint = document.getElementById('sim-hint');
+      if (tb) tb.style.display = 'none';
+      if (hint) hint.style.display = 'none';
+    }
+  })();
+
   /* ─── postMessage relay: forward commands to self ─────────────────────── */
   function simPost(type) { window.postMessage({ type: type }, '*'); }
 

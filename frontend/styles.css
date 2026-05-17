@@ -713,8 +713,15 @@ tbody td {
   color: var(--muted);
   font-size: 0.85rem;
 }
-/* Highlight 1/0 output values */
-tbody td:not(:first-child):last-child,
+/* Highlight output columns — works for any number of outputs */
+th.col-output {
+  background: rgba(109,179,255,0.12);
+  color: var(--accent-2);
+  border-left: 1px solid rgba(109,179,255,0.18);
+}
+tbody td.col-output {
+  border-left: 1px solid rgba(109,179,255,0.1);
+}
 tbody td[data-output="1"] { color: var(--accent-2); font-weight: 600; }
 tbody td[data-output="0"] { color: var(--muted); }
 

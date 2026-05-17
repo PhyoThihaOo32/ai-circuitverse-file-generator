@@ -47,8 +47,8 @@ async function aiGenerateExpectedTable({ question, parsed, claudeClient, claudeM
   if (inputs.length === 0 || outputs.length === 0) {
     return { skipped: true, reason: "No inputs/outputs to verify" };
   }
-  if (inputs.length > 5) {
-    // 32 rows × N outputs is the practical ceiling for a single response token budget.
+  if (inputs.length > 8) {
+    // 256 rows × N outputs is the practical ceiling for a single response token budget.
     // Beyond that we save tokens and trust the local evaluator.
     return { skipped: true, reason: `Too many inputs (${inputs.length}) — cross-check skipped to save tokens` };
   }
@@ -60,13 +60,13 @@ async function aiGenerateExpectedTable({ question, parsed, claudeClient, claudeM
     `Inputs (in order, MSB first): ${inputs.join(", ")}`,
     `Outputs (in order): ${outputs.join(", ")}`,
     ``,
-    `Produce the expected truth table for what the user asked.  ${2 ** inputs.length} rows.`
+    `Produce the expected truth table for what the user asked.  Exactly ${2 ** inputs.length} rows.`
   ].join("\n");
 
   try {
     const message = await claudeClient.messages.create({
       model: claudeModel,
-      max_tokens: 1500,
+      max_tokens: 4096,
       // Cache the verification prompt so repeated checks share the system tokens.
       system: [{ type: "text", text: VERIFICATION_PROMPT, cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: userMessage }]

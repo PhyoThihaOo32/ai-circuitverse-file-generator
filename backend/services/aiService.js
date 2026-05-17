@@ -444,13 +444,16 @@ async function analyzeQuestion(question) {
   if (process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY) {
     try {
       const client = createClaudeClient();
-      const message = await client.messages.create({
-        model: claudeModel(),
-        max_tokens: 1400,
-        // Cache the large system prompt so repeated requests don't re-tokenise it.
-        system: [{ type: "text", text: CIRCUIT_EXTRACTION_PROMPT, cache_control: { type: "ephemeral" } }],
-        messages: [{ role: "user", content: question }]
-      });
+      const message = await client.messages.create(
+        {
+          model: claudeModel(),
+          max_tokens: 1400,
+          // Cache the large system prompt so repeated requests don't re-tokenise it.
+          system: [{ type: "text", text: CIRCUIT_EXTRACTION_PROMPT, cache_control: { type: "ephemeral" } }],
+          messages: [{ role: "user", content: question }]
+        },
+        { timeout: 30_000 }  // 30 s hard cap — prevents hanging requests
+      );
       return coerceParsedCircuit(extractJson(extractClaudeText(message)), question);
     } catch (error) {
       console.warn("Claude analysis failed; using fallback parser.", error.message);
@@ -496,6 +499,7 @@ async function extractQuestionFromImage(file) {
     const response = await client.messages.create({
       model: process.env.CLAUDE_VISION_MODEL || claudeModel(),
       max_tokens: 1000,
+      // timeout is set via request options (second arg) below
       system:
         "You are an OCR and digital logic assistant. Read the image carefully. If it contains text, extract the student's exact Boolean logic problem. If it contains a logic circuit diagram, identify gates, inputs, outputs, and derive parseable Boolean equations when possible. Return strict JSON only with keys question, equations, notes, and confidence. Preserve apostrophes, XOR, plus signs, and line breaks. Make question parseable by the circuit generator, for example F = A'B + BC or Sum = A XOR B XOR Cin.",
       messages: [
@@ -514,7 +518,7 @@ async function extractQuestionFromImage(file) {
           ]
         }
       ]
-    });
+    }, { timeout: 40_000 });  // 40 s — image uploads take longer to process
     const result = extractJson(extractClaudeText(response));
     return {
       question: String(result.question || "").trim(),
@@ -597,13 +601,16 @@ async function retryWithFeedback({ question, parsed, mismatches }) {
 
   try {
     const client = createClaudeClient();
-    const message = await client.messages.create({
-      model: claudeModel(),
-      max_tokens: 1400,
-      // Reuse the same system prompt → same cache hit.
-      system: [{ type: "text", text: CIRCUIT_EXTRACTION_PROMPT, cache_control: { type: "ephemeral" } }],
-      messages: [{ role: "user", content: userMessage }]
-    });
+    const message = await client.messages.create(
+      {
+        model: claudeModel(),
+        max_tokens: 1400,
+        // Reuse the same system prompt → same cache hit.
+        system: [{ type: "text", text: CIRCUIT_EXTRACTION_PROMPT, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: userMessage }]
+      },
+      { timeout: 30_000 }
+    );
     const corrected = coerceParsedCircuit(extractJson(extractClaudeText(message)), question);
     return corrected;
   } catch (error) {
