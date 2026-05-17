@@ -33,13 +33,13 @@
 
     /* ── Canvas area ─────────────────────────────────────────────────────────── */
     #simulation {
-      position: absolute;
-      top: 0; right: 0; bottom: 0;
-      left: 210px;          /* default: panel open */
+      position: absolute !important;
+      top: 0 !important; right: 0 !important; bottom: 0 !important;
+      left: 210px !important;   /* default: panel open */
       overflow: hidden;
       transition: left 0.22s ease;
     }
-    body.panel-closed #simulation { left: 0; }
+    body.panel-closed #simulation { left: 0 !important; }
 
     .canvasArea,
     #simulationArea,
@@ -265,6 +265,7 @@
     /* ── Properties panel — floating bottom-right when element is selected ──── */
     #moduleProperty,
     #propertiesPanel {
+      display: none;            /* hidden until jQuery .show() is called          */
       position: absolute !important;
       right: 10px !important;
       bottom: 60px !important;
@@ -505,7 +506,8 @@
     #sim-hint {
       position: absolute;
       bottom: 10px;
-      left: 12px;
+      left: 222px;          /* 210px panel + 12px margin — stays in canvas area */
+      transition: left 0.22s ease;
       z-index: 200;
       font-family: Arial, sans-serif;
       font-size: 10.5px;
@@ -513,6 +515,7 @@
       pointer-events: none;
       letter-spacing: 0.02em;
     }
+    body.panel-closed #sim-hint { left: 12px; }
 
     /* ── Loading spinner (hidden) ────────────────────────────────────────────── */
     .loadingIcon { display: none !important; }
@@ -684,9 +687,12 @@
 <div id="time-Diagram" class="timing-diagram-panel" style="display:none!important"></div>
 
 <!-- ── Canvas area ───────────────────────────────────────────────────────── -->
-<div id="simulation" style="position:absolute;top:0;left:0;right:0;bottom:0;">
+<div id="simulation">
   <div id="tabsBar" class="noSelect pointerCursor"
-       style="position:absolute;left:0;top:0;z-index:4;"></div>
+       style="position:absolute;left:0;top:0;z-index:4;">
+    <!-- "+" button must be the last child so newCircuit() inserts tabs before it -->
+    <button id="tabsBarAddBtn" type="button" title="New circuit tab" aria-label="Add circuit">+</button>
+  </div>
   <div id="code-window" class="code-window">
     <textarea id="codeTextArea"></textarea>
   </div>
@@ -846,6 +852,13 @@
 <script>
   /* ─── postMessage relay: forward commands to self ─────────────────────── */
   function simPost(type) { window.postMessage({ type: type }, '*'); }
+
+  /* ─── Tab bar + button ──────────────────────────────────────────────────── */
+  document.getElementById('tabsBarAddBtn').addEventListener('click', function() {
+    // Trigger the hidden navbar link so setupUI's .logixButton handler fires
+    var link = document.getElementById('createNewCircuitScope');
+    if (link) link.click();
+  });
 
   /* ─── Toolbar button → simPost ──────────────────────────────────────────── */
   document.getElementById('sim-fit').addEventListener('click',    function() { simPost('simFit'); });

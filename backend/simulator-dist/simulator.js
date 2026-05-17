@@ -51112,6 +51112,13 @@ User Id: ${window.user_id}`;
   // simulator/src/app.js
   document.addEventListener("DOMContentLoaded", () => {
     setup();
+    // Expose key functions to window so the index.html inline script can call them
+    window.generateSaveData = generateSaveData;
+    window.download         = download;
+    window.resetScopeList   = resetScopeList;
+    window.showMessage      = showMessage;
+    window.getProjectName   = getProjectName;
+    window.newCircuit       = newCircuit;
     var js = {
       "devices": {
         "dev0": {
