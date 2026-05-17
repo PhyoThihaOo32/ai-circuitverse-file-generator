@@ -549,63 +549,106 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-// ── Electric arc / lightning background effect ────────────────────────────────
-// Randomly spawns neon lightning bolts behind the UI.  Fires every 3-10 s with
-// occasional rapid double-strikes for a realistic electrical discharge feel.
+// ── Electric arc / lightning + spark effects ──────────────────────────────────
+// Randomly spawns neon lightning bolts with spark/ember particles.
+// Fires every 2.5-8 s; 30 % chance of rapid double-strike.
 (function electricArcs() {
   const NS = "http://www.w3.org/2000/svg";
 
-  /** Return a random float between a and b */
   function rnd(a, b) { return a + Math.random() * (b - a); }
+  function rndInt(a, b) { return Math.floor(rnd(a, b + 1)); }
+  function pick(...arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // Colour palette: neon pink · electric blue · cyan
+  const PALETTES = [
+    { color: "#1a6fff", dim: "rgba(26,111,255,0.45)",  sc: "#5599ff" },
+    { color: "#00e5ff", dim: "rgba(0,229,255,0.4)",    sc: "#00e5ff" },
+    { color: "#ff2d78", dim: "rgba(255,45,120,0.4)",   sc: "#ff7aaa" },
+    { color: "#1a6fff", dim: "rgba(26,111,255,0.45)",  sc: "#5599ff" }, // blue weighted 2×
+  ];
 
   /**
-   * Build a jagged SVG polyline path for a lightning bolt.
-   * Points travel vertically down the bolt; horizontal jitter creates the zig-zag.
+   * Build jagged polyline points for a lightning bolt.
+   * Horizontal jitter per segment creates the zig-zag.
    */
   function buildBoltPoints(length, segments) {
-    const pts = [[0, 0]];
     const segH = length / segments;
+    const pts  = [[0, 0]];
     for (let i = 1; i < segments; i++) {
-      const jitter = rnd(-segH * 0.9, segH * 0.9);
-      pts.push([jitter, segH * i]);
+      pts.push([rnd(-segH * 0.85, segH * 0.85), segH * i]);
     }
     pts.push([0, length]);
     return pts;
   }
 
-  /** Spawn one lightning bolt at a random position on the page */
+  /** Emit spark particles + trailing embers at (px, py) in viewport pixels */
+  function spawnSparks(px, py, sc) {
+    const count  = rndInt(6, 14);
+    const eCount = rndInt(3, 7);
+
+    // Fast sparks — burst outward
+    for (let i = 0; i < count; i++) {
+      const angle = rnd(0, Math.PI * 2);
+      const dist  = rnd(18, 65);
+      const el    = document.createElement("div");
+      el.className = "e-spark";
+      const sz  = rnd(2, 4).toFixed(1) + "px";
+      const dur = rnd(0.35, 0.65).toFixed(2) + "s";
+      el.style.cssText = [
+        `left:${px}px`, `top:${py}px`,
+        `--dx:${(Math.cos(angle) * dist).toFixed(1)}px`,
+        `--dy:${(Math.sin(angle) * dist).toFixed(1)}px`,
+        `--sc:${sc}`, `--sz:${sz}`, `--dur:${dur}`
+      ].join(";");
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 700);
+    }
+
+    // Slow embers — drift upward
+    for (let i = 0; i < eCount; i++) {
+      const el  = document.createElement("div");
+      el.className = "e-ember";
+      const dx  = rnd(-30, 30).toFixed(1);
+      const dy  = rnd(-50, -90).toFixed(1);
+      const dur = rnd(0.7, 1.3).toFixed(2) + "s";
+      el.style.cssText = [
+        `left:${px + rnd(-8, 8)}px`,
+        `top:${py + rnd(-4, 4)}px`,
+        `--dx:${dx}px`, `--dy:${dy}px`,
+        `--sc:${sc}`, `--dur:${dur}`
+      ].join(";");
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1400);
+    }
+  }
+
+  /** Spawn one lightning bolt at a random position */
   function spawnBolt() {
-    const length    = rnd(80, 240);
-    const segments  = Math.round(rnd(5, 10));
-    const angle     = rnd(-55, 55);        // tilt from vertical
-    const vx        = rnd(5, 92);           // viewport % x
-    const vy        = rnd(4, 68);           // viewport % y
-    const isCyan    = Math.random() > 0.42;
-    const color     = isCyan ? "#00e5ff" : "#ff2d78";
-    const colorDim  = isCyan ? "rgba(0,229,255,0.4)" : "rgba(255,45,120,0.4)";
+    const pal      = pick(...PALETTES);
+    const length   = rnd(90, 260);
+    const segments = rndInt(5, 11);
+    const angle    = rnd(-60, 60);
+    const vx       = rnd(4, 93);   // viewport %
+    const vy       = rnd(4, 70);
 
-    // Bounding box for the polyline
-    const pts      = buildBoltPoints(length, segments);
-    const xs       = pts.map(p => p[0]);
-    const minX     = Math.min(...xs);
-    const maxX     = Math.max(...xs);
-    const w        = Math.max(maxX - minX, 4) + 20; // +padding for glow bleed
-    const h        = length + 20;
+    const pts  = buildBoltPoints(length, segments);
+    const xs   = pts.map(p => p[0]);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const w    = Math.max(maxX - minX, 4) + 24;
+    const h    = length + 24;
 
-    // Build SVG
+    // SVG element
     const svg = document.createElementNS(NS, "svg");
     svg.setAttribute("width",   w);
     svg.setAttribute("height",  h);
-    svg.setAttribute("viewBox", `${minX - 10} -10 ${w} ${h}`);
+    svg.setAttribute("viewBox", `${minX - 12} -12 ${w} ${h}`);
     svg.style.cssText = [
       "position:fixed",
-      `left:${vx}vw`,
-      `top:${vy}vh`,
+      `left:${vx}vw`, `top:${vy}vh`,
       `transform:rotate(${angle}deg)`,
       "transform-origin:top center",
-      "pointer-events:none",
-      "z-index:0",
-      "overflow:visible",
+      "pointer-events:none", "z-index:0", "overflow:visible",
       "opacity:0",
       "animation:e-bolt-strike 0.45s cubic-bezier(0.08,0.9,0.3,1) forwards"
     ].join(";");
@@ -613,79 +656,88 @@ function escapeHtml(value) {
     // Glow filter
     const defs   = document.createElementNS(NS, "defs");
     const filter = document.createElementNS(NS, "filter");
-    const fid    = "ef" + Date.now();
+    const fid    = "ef" + Date.now() + Math.random().toString(36).slice(2);
     filter.setAttribute("id", fid);
-    filter.setAttribute("x", "-200%");
-    filter.setAttribute("y", "-200%");
-    filter.setAttribute("width", "500%");
-    filter.setAttribute("height", "500%");
-
+    filter.setAttribute("x", "-300%"); filter.setAttribute("y", "-300%");
+    filter.setAttribute("width", "700%"); filter.setAttribute("height", "700%");
     const blur = document.createElementNS(NS, "feGaussianBlur");
     blur.setAttribute("in", "SourceGraphic");
-    blur.setAttribute("stdDeviation", "3");
-    const comp = document.createElementNS(NS, "feComposite");
-    comp.setAttribute("in2", "SourceGraphic");
-    comp.setAttribute("operator", "over");
+    blur.setAttribute("stdDeviation", "3.5");
     filter.appendChild(blur);
-    filter.appendChild(comp);
     defs.appendChild(filter);
     svg.appendChild(defs);
 
-    // Glow copy (blurred, wider stroke)
+    const ptStr = pts.map(p => p.join(",")).join(" ");
+
+    // Wide outer glow
+    const glow2 = document.createElementNS(NS, "polyline");
+    glow2.setAttribute("points", ptStr);
+    glow2.setAttribute("fill", "none");
+    glow2.setAttribute("stroke", pal.dim);
+    glow2.setAttribute("stroke-width", "8");
+    glow2.setAttribute("filter", `url(#${fid})`);
+    glow2.setAttribute("stroke-linecap", "round");
+    svg.appendChild(glow2);
+
+    // Mid glow
     const glow = document.createElementNS(NS, "polyline");
-    glow.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    glow.setAttribute("points", ptStr);
     glow.setAttribute("fill", "none");
-    glow.setAttribute("stroke", colorDim);
-    glow.setAttribute("stroke-width", "5");
-    glow.setAttribute("filter", `url(#${fid})`);
+    glow.setAttribute("stroke", pal.dim);
+    glow.setAttribute("stroke-width", "3");
     glow.setAttribute("stroke-linecap", "round");
     svg.appendChild(glow);
 
-    // Main bright line
+    // Main bright stroke
     const line = document.createElementNS(NS, "polyline");
-    line.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    line.setAttribute("points", ptStr);
     line.setAttribute("fill", "none");
-    line.setAttribute("stroke", color);
-    line.setAttribute("stroke-width", "1.5");
+    line.setAttribute("stroke", pal.color);
+    line.setAttribute("stroke-width", "1.8");
     line.setAttribute("stroke-linecap", "round");
     svg.appendChild(line);
 
-    // White core (very thin)
+    // White-hot core
     const core = document.createElementNS(NS, "polyline");
-    core.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    core.setAttribute("points", ptStr);
     core.setAttribute("fill", "none");
     core.setAttribute("stroke", "#ffffff");
     core.setAttribute("stroke-width", "0.5");
-    core.setAttribute("opacity", "0.7");
+    core.setAttribute("opacity", "0.75");
     core.setAttribute("stroke-linecap", "round");
     svg.appendChild(core);
 
     document.body.appendChild(svg);
 
-    // Brief ambient flash at the bolt's position
+    // Radial flash at bolt origin
     const flash = document.createElement("div");
     flash.className = "e-flash";
-    flash.style.cssText = `--fx:${vx}vw;--fy:${vy}vh;`;
+    flash.style.setProperty("--fx", vx + "vw");
+    flash.style.setProperty("--fy", vy + "vh");
     document.body.appendChild(flash);
 
-    // Clean up after animation
-    const ttl = 500;
-    setTimeout(() => { svg.remove(); flash.remove(); }, ttl);
+    // Sparks at bolt origin (viewport pixels)
+    const px = (vx / 100) * window.innerWidth;
+    const py = (vy / 100) * window.innerHeight;
+    setTimeout(() => spawnSparks(px, py, pal.sc), 30);
+
+    // Also emit sparks at the bolt tip (approximate)
+    const tipAngleRad = (angle * Math.PI) / 180;
+    const tipX = px + Math.sin(tipAngleRad) * length * 0.85;
+    const tipY = py + Math.cos(tipAngleRad) * length * 0.85;
+    setTimeout(() => spawnSparks(tipX, tipY, pal.sc), 60);
+
+    setTimeout(() => { svg.remove(); flash.remove(); }, 550);
   }
 
-  /** Schedule the next strike with optional "double tap" */
+  /** Schedule next strike; 30 % chance of double-tap */
   function schedule() {
-    const delay = rnd(3200, 9500);
     setTimeout(() => {
       spawnBolt();
-      // 30 % chance of a rapid second strike 80-180 ms later
-      if (Math.random() < 0.3) {
-        setTimeout(spawnBolt, rnd(80, 180));
-      }
+      if (Math.random() < 0.3) setTimeout(spawnBolt, rnd(70, 160));
       schedule();
-    }, delay);
+    }, rnd(2500, 8000));  // slightly more frequent than before
   }
 
-  // Kick off after a short random warm-up so it doesn't fire on hard reload
-  setTimeout(schedule, rnd(1200, 3500));
+  setTimeout(schedule, rnd(1000, 3000));
 })();
