@@ -548,3 +548,144 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// ── Electric arc / lightning background effect ────────────────────────────────
+// Randomly spawns neon lightning bolts behind the UI.  Fires every 3-10 s with
+// occasional rapid double-strikes for a realistic electrical discharge feel.
+(function electricArcs() {
+  const NS = "http://www.w3.org/2000/svg";
+
+  /** Return a random float between a and b */
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+
+  /**
+   * Build a jagged SVG polyline path for a lightning bolt.
+   * Points travel vertically down the bolt; horizontal jitter creates the zig-zag.
+   */
+  function buildBoltPoints(length, segments) {
+    const pts = [[0, 0]];
+    const segH = length / segments;
+    for (let i = 1; i < segments; i++) {
+      const jitter = rnd(-segH * 0.9, segH * 0.9);
+      pts.push([jitter, segH * i]);
+    }
+    pts.push([0, length]);
+    return pts;
+  }
+
+  /** Spawn one lightning bolt at a random position on the page */
+  function spawnBolt() {
+    const length    = rnd(80, 240);
+    const segments  = Math.round(rnd(5, 10));
+    const angle     = rnd(-55, 55);        // tilt from vertical
+    const vx        = rnd(5, 92);           // viewport % x
+    const vy        = rnd(4, 68);           // viewport % y
+    const isCyan    = Math.random() > 0.42;
+    const color     = isCyan ? "#00e5ff" : "#ff2d78";
+    const colorDim  = isCyan ? "rgba(0,229,255,0.4)" : "rgba(255,45,120,0.4)";
+
+    // Bounding box for the polyline
+    const pts      = buildBoltPoints(length, segments);
+    const xs       = pts.map(p => p[0]);
+    const minX     = Math.min(...xs);
+    const maxX     = Math.max(...xs);
+    const w        = Math.max(maxX - minX, 4) + 20; // +padding for glow bleed
+    const h        = length + 20;
+
+    // Build SVG
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("width",   w);
+    svg.setAttribute("height",  h);
+    svg.setAttribute("viewBox", `${minX - 10} -10 ${w} ${h}`);
+    svg.style.cssText = [
+      "position:fixed",
+      `left:${vx}vw`,
+      `top:${vy}vh`,
+      `transform:rotate(${angle}deg)`,
+      "transform-origin:top center",
+      "pointer-events:none",
+      "z-index:0",
+      "overflow:visible",
+      "opacity:0",
+      "animation:e-bolt-strike 0.45s cubic-bezier(0.08,0.9,0.3,1) forwards"
+    ].join(";");
+
+    // Glow filter
+    const defs   = document.createElementNS(NS, "defs");
+    const filter = document.createElementNS(NS, "filter");
+    const fid    = "ef" + Date.now();
+    filter.setAttribute("id", fid);
+    filter.setAttribute("x", "-200%");
+    filter.setAttribute("y", "-200%");
+    filter.setAttribute("width", "500%");
+    filter.setAttribute("height", "500%");
+
+    const blur = document.createElementNS(NS, "feGaussianBlur");
+    blur.setAttribute("in", "SourceGraphic");
+    blur.setAttribute("stdDeviation", "3");
+    const comp = document.createElementNS(NS, "feComposite");
+    comp.setAttribute("in2", "SourceGraphic");
+    comp.setAttribute("operator", "over");
+    filter.appendChild(blur);
+    filter.appendChild(comp);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+
+    // Glow copy (blurred, wider stroke)
+    const glow = document.createElementNS(NS, "polyline");
+    glow.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    glow.setAttribute("fill", "none");
+    glow.setAttribute("stroke", colorDim);
+    glow.setAttribute("stroke-width", "5");
+    glow.setAttribute("filter", `url(#${fid})`);
+    glow.setAttribute("stroke-linecap", "round");
+    svg.appendChild(glow);
+
+    // Main bright line
+    const line = document.createElementNS(NS, "polyline");
+    line.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    line.setAttribute("fill", "none");
+    line.setAttribute("stroke", color);
+    line.setAttribute("stroke-width", "1.5");
+    line.setAttribute("stroke-linecap", "round");
+    svg.appendChild(line);
+
+    // White core (very thin)
+    const core = document.createElementNS(NS, "polyline");
+    core.setAttribute("points", pts.map(p => p.join(",")).join(" "));
+    core.setAttribute("fill", "none");
+    core.setAttribute("stroke", "#ffffff");
+    core.setAttribute("stroke-width", "0.5");
+    core.setAttribute("opacity", "0.7");
+    core.setAttribute("stroke-linecap", "round");
+    svg.appendChild(core);
+
+    document.body.appendChild(svg);
+
+    // Brief ambient flash at the bolt's position
+    const flash = document.createElement("div");
+    flash.className = "e-flash";
+    flash.style.cssText = `--fx:${vx}vw;--fy:${vy}vh;`;
+    document.body.appendChild(flash);
+
+    // Clean up after animation
+    const ttl = 500;
+    setTimeout(() => { svg.remove(); flash.remove(); }, ttl);
+  }
+
+  /** Schedule the next strike with optional "double tap" */
+  function schedule() {
+    const delay = rnd(3200, 9500);
+    setTimeout(() => {
+      spawnBolt();
+      // 30 % chance of a rapid second strike 80-180 ms later
+      if (Math.random() < 0.3) {
+        setTimeout(spawnBolt, rnd(80, 180));
+      }
+      schedule();
+    }, delay);
+  }
+
+  // Kick off after a short random warm-up so it doesn't fire on hard reload
+  setTimeout(schedule, rnd(1200, 3500));
+})();
