@@ -560,12 +560,12 @@ function escapeHtml(value) {
   function rndInt(a, b) { return Math.floor(rnd(a, b + 1)); }
   function pick(...arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-  // Colour palette: electric blue (weighted 2×) · cyan · neon pink
+  // Colour palette: divine gold (weighted 2×) · white-electric · olympian violet
   const PALETTES = [
-    { color: "#1a6fff", aura: "rgba(26,111,255,0.5)",  halo: "rgba(26,111,255,0.28)" },
-    { color: "#1a6fff", aura: "rgba(26,111,255,0.5)",  halo: "rgba(26,111,255,0.28)" },
-    { color: "#00e5ff", aura: "rgba(0,229,255,0.45)",  halo: "rgba(0,229,255,0.25)"  },
-    { color: "#ff2d78", aura: "rgba(255,45,120,0.45)", halo: "rgba(255,45,120,0.22)" },
+    { color: "#ffd60a", aura: "rgba(255,214,10,0.55)",  halo: "rgba(255,200,0,0.32)"   }, // zeus gold
+    { color: "#ffd60a", aura: "rgba(255,214,10,0.55)",  halo: "rgba(255,200,0,0.32)"   }, // zeus gold ×2
+    { color: "#ffffff", aura: "rgba(255,255,255,0.55)",  halo: "rgba(200,220,255,0.3)"  }, // divine white
+    { color: "#a855f7", aura: "rgba(168,85,247,0.48)",  halo: "rgba(168,85,247,0.26)"  }, // olympian violet
   ];
 
   /**
