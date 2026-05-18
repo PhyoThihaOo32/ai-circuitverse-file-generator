@@ -126,6 +126,7 @@ function renderResults(data) {
   // If the simulator frame is already loaded (user visited the tab earlier), update it immediately.
   if (data.parsed?.type !== "sequential" && state.simulatorFrameLoaded) loadSimulator(data);
   activateTab("summary");
+  recolorAllDiagrams();
 }
 
 function loadSimulator(data) {
@@ -549,6 +550,126 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+// ── SVG diagram theme recoloring ──────────────────────────────────────────────
+// Remaps the server-generated SVG (dark neon palette) to a light Zeus palette
+// when the light theme is active, and restores originals for dark mode.
+function applySvgTheme(svgEl, theme) {
+  if (!svgEl) return;
+  const isLight = (theme !== "dark");
+
+  svgEl.querySelectorAll("*").forEach((el) => {
+    const tag = el.tagName.toLowerCase();
+
+    // Snapshot original attribute values on first visit (idempotent)
+    ["fill", "stroke"].forEach((attr) => {
+      if (el.hasAttribute(attr) && !el.hasAttribute("data-orig-" + attr)) {
+        el.setAttribute("data-orig-" + attr, el.getAttribute(attr));
+      }
+    });
+
+    const oFill   = el.getAttribute("data-orig-fill")   || "";
+    const oStroke = el.getAttribute("data-orig-stroke") || "";
+    const sw      = el.getAttribute("stroke-width")     || "";
+
+    // Restore dark originals when switching back
+    if (!isLight) {
+      if (oFill)   el.setAttribute("fill",   oFill);
+      if (oStroke) el.setAttribute("stroke", oStroke);
+      return;
+    }
+
+    // ── Light / Zeus palette ───────────────────────────────────────────────
+
+    // Main background rect (width="100%")
+    if (tag === "rect" && oFill === "#0a0a0a" && el.getAttribute("width") === "100%") {
+      el.setAttribute("fill", "#f5f8ff");
+
+    // Header tint band
+    } else if (tag === "rect" && oFill.includes("rgba(240,98,138")) {
+      el.setAttribute("fill", "rgba(59,130,246,0.04)");
+
+    // Header divider line (rgba stroke)
+    } else if (tag === "line" && oStroke.includes("rgba(240,98,138")) {
+      el.setAttribute("stroke", "rgba(59,130,246,0.15)");
+
+    // Gate body paths — dark burgundy fill + pink stroke → ivory + amber
+    } else if (tag === "path" && oFill === "#1e0710") {
+      el.setAttribute("fill",   "#fff8ed");
+      el.setAttribute("stroke", "#d97706");
+
+    // Inversion bubbles (NOT/NAND/NOR/XNOR) — black fill + pink stroke
+    } else if (tag === "circle" && oFill === "#0a0a0a") {
+      el.setAttribute("fill",   "#f5f8ff");
+      el.setAttribute("stroke", "#d97706");
+
+    // Junction dots — pink fill → sky blue
+    } else if (tag === "circle" && oFill === "#f0628a") {
+      el.setAttribute("fill", "#2563eb");
+
+    // Wire paths — fill:none, stroke-width 1.8 → sky blue
+    } else if (tag === "path" && oFill === "none" && sw === "1.8") {
+      el.setAttribute("stroke", "#2563eb");
+
+    // XOR / XNOR back-curve — fill:none, stroke-width 1.5 → amber
+    } else if (tag === "path" && oFill === "none" && sw === "1.5") {
+      el.setAttribute("stroke", "#d97706");
+
+    // Input tick lines → sky blue
+    } else if (tag === "line" && oStroke === "#f0628a") {
+      el.setAttribute("stroke", "#2563eb");
+
+    // INPUT pin shape → light green
+    } else if (tag === "path" && oFill === "#0d1f14") {
+      el.setAttribute("fill",   "#f0fdf4");
+      el.setAttribute("stroke", "#16a34a");
+
+    // OUTPUT pin shape → light cyan
+    } else if (tag === "path" && oFill === "#0d1825") {
+      el.setAttribute("fill",   "#ecfeff");
+      el.setAttribute("stroke", "#0891b2");
+
+    // CONST pin rect
+    } else if (tag === "rect" && oFill === "#141414") {
+      el.setAttribute("fill",   "#f8fafc");
+      el.setAttribute("stroke", "#94a3b8");
+
+    // Text: title + gate-type labels (primary pink → dark amber)
+    } else if (tag === "text" && oFill === "#f0628a") {
+      el.setAttribute("fill", "#92400e");
+
+    // Text: subtitle
+    } else if (tag === "text" && oFill === "#606070") {
+      el.setAttribute("fill", "#64748b");
+
+    // Text: gate sub-labels below body
+    } else if (tag === "text" && oFill === "#808080") {
+      el.setAttribute("fill", "#94a3b8");
+
+    // Text: DFF port labels (lighter pink)
+    } else if (tag === "text" && oFill === "#ff8cad") {
+      el.setAttribute("fill", "#92400e");
+
+    // Text: INPUT pin label (mint green)
+    } else if (tag === "text" && oFill === "#6ee7b7") {
+      el.setAttribute("fill", "#14532d");
+
+    // Text: OUTPUT pin label (light cyan)
+    } else if (tag === "text" && oFill === "#67e8f9") {
+      el.setAttribute("fill", "#164e63");
+
+    // Text: CONST pin label (#aaa)
+    } else if (tag === "text" && (oFill === "#aaa" || oFill === "#aaaaaa")) {
+      el.setAttribute("fill", "#475569");
+    }
+  });
+}
+
+/** Recolor every .svg-wrap svg on the page to match the current theme. */
+function recolorAllDiagrams() {
+  const theme = document.documentElement.getAttribute("data-theme") || "light";
+  document.querySelectorAll(".svg-wrap svg").forEach((svg) => applySvgTheme(svg, theme));
+}
+
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 (function themeInit() {
   const root = document.documentElement;
@@ -559,6 +680,8 @@ function escapeHtml(value) {
     root.setAttribute("data-theme", theme);
     localStorage.setItem("theme", theme);
     if (icon) icon.textContent = theme === "dark" ? "☀️" : "🌙";
+    // Recolor any diagrams already on screen
+    recolorAllDiagrams();
   }
 
   // Load saved preference; default to light
