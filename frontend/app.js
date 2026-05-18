@@ -160,7 +160,8 @@ function loadSimulator(data) {
     });
   };
 
-  const simulatorUrl = `${API_BASE || window.location.origin}/simulator/`;
+  const cvTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "night-sky" : "default";
+  const simulatorUrl = `${API_BASE || window.location.origin}/simulator/?theme=${cvTheme}`;
   if (iframe.src !== simulatorUrl) {
     state.simulatorFrameLoaded = false;
     iframe.src = simulatorUrl;
@@ -556,8 +557,21 @@ function escapeHtml(value) {
 function sendThemeToSimulator() {
   const theme = document.documentElement.getAttribute("data-theme") || "light";
   const iframe = document.querySelector("#cvSimulator");
-  if (iframe && iframe.contentWindow) {
+  if (!iframe) return;
+
+  // Push CSS-level theme (panel, properties, tab bar, etc.)
+  if (iframe.contentWindow) {
     iframe.contentWindow.postMessage({ type: "setTheme", theme }, "*");
+  }
+
+  // The canvas background is controlled by CircuitVerse's built-in ?theme= URL param.
+  // If the theme changed, reload the iframe with the new param and re-send the circuit.
+  if (state.analysis && state.analysis.simulatorCircuit) {
+    const cvTheme = theme === "dark" ? "night-sky" : "default";
+    const newUrl = `${API_BASE || window.location.origin}/simulator/?theme=${cvTheme}`;
+    if (iframe.src !== newUrl) {
+      loadSimulator(state.analysis);
+    }
   }
 }
 
